@@ -1,0 +1,79 @@
+{% set etcdEndpoints = etcd.endpoints %}
+{% set apiCertSans = cert.sans -%}
+
+---
+apiVersion: "{{ apiVersion }}"
+kind: "InitConfiguration"
+localAPIEndpoint:
+  advertiseAddress: "{{ apiAddress }}"
+  bindPort: {{ apiPort }}
+
+---
+apiVersion: "{{ apiVersion }}"
+kind: "ClusterConfiguration"
+kubernetesVersion: "{{ kVersion }}"
+certificatesDir: "/etc/kubernetes/pki"
+clusterName: "{{ clusterName | default('kubernetes') }}"
+imageRepository: "{{ imageRepo | default('k8s.gcr.io') }}"
+{% if controlPlaneEndpoint is string %}
+controlPlaneEndpoint: "{{ controlPlaneEndpoint }}:{{ apiPort }}"
+{% endif %}
+etcd:
+  external:
+    endpoints:
+{% if etcdEndpoints is sequence() and (etcdEndpoints | length()) is odd() %}
+{% for endpoint in etcdEndpoints %}      - "{{ endpoint }}"
+{% endfor %}
+{% endif %}
+    caFile: "{{ etcd.ca | default() }}"
+    certFile: "{{ etcd.cert | default() }}"
+    keyFile: "{{ etcd.key | default() }}"
+apiServer:
+{% if apiCertSans is sequence() and (apiCertSans | length()) > 0 %}
+  certSANs:
+{% for san in apiCertSans %}    - "{{ san }}"
+{% endfor %}
+{% endif %}
+  extraArgs:
+    profiling: "false"
+    max-connection-bytes-per-sec: "{{ rate.maxBytes }}"
+    max-mutating-requests-inflight: "{{ rate.maxMutatingReqs }}"
+    max-requests-inflight: "{{ rate.maxReqs }}"
+    {#target-ram-mb: "{{ (ansible_memtotal_mb / 2) | int() }}"#}
+    tls-min-version: "{{ tlsVersion }}"
+{#
+{% if k8s_tokens is defined and k8s_tokens is sequence() %}
+    token-auth-file: "/etc/kubernetes/tokens"
+  extraVolumes:
+    - name: "bearer-tokens"
+      hostPath: "/opt/aperikube/tokens"
+      mountPath: "/etc/kubernetes/tokens"
+      readOnly: true
+      pathType: File
+{% endif %}
+#}
+controllerManager:
+  extraArgs:
+    concurrent-deployment-syncs: "5"
+    concurrent-endpoint-syncs: "5"
+    concurrent-namespace-syncs: "10"
+    concurrent-replicaset-syncs: "5"
+    concurrent-service-syncs: "1"
+    tls-min-version: "{{ tlsVersion }}"
+scheduler:
+  extraArgs:
+    tls-min-version: "{{ tlsVersion }}"
+dns:
+  type: "{{ dns.type }}"
+networking:
+  dnsDomain: "{{ dns.domain | default('cluster.local') }}"
+  podSubnet: "{{ network.podSubnet | default() }}"
+  serviceSubnet: "{{ network.serviceSubnet | default() }}"
+
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
