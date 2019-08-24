@@ -1,0 +1,13 @@
+---
+
+- name: "test kubeadm module call"
+  hosts: "localhost"
+  gather_facts: False
+  become: True
+  tasks:
+    - kubeadm:
+        version: False
+        init: "yes"
+      register: kubeadm
+    - debug:
+        var: kubeadm

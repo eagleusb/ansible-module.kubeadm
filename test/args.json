@@ -1,5 +1,6 @@
 {
   "ANSIBLE_MODULE_ARGS": {
-    "version": true
+    "version": false,
+    "init": "yes"
   }
 }
