@@ -1,12 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 ANSIBLE_METADATA = {
-  'metadata_version': '0.1.0',
-  'status': ['preview'],
-  'supported_by': 'community'
+    "metadata_version": "0.1.0",
+    "status": ["preview"],
+    "supported_by": "community",
 }
 
-DOCUMENTATION = '''
+DOCUMENTATION = """
 ---
 module: ansible-module-kubeadm
 short_description: Kubernetes kubeadm module
@@ -25,9 +26,9 @@ options:
 extends_documentation_fragment: []
 author:
   - Leslie-Alexandre DENIS (@eagleusb)
-'''
+"""
 
-EXAMPLES = '''
+EXAMPLES = """
 # Pass in a message
 - name: Test with a message
   my_test:
@@ -43,9 +44,9 @@ EXAMPLES = '''
 - name: Test failure of the module
   my_test:
     name: fail me
-'''
+"""
 
-RETURN = '''
+RETURN = """
 original_message:
   description: The original name param that was passed in
   type: str
@@ -54,68 +55,73 @@ message:
   description: The output message that the test module generates
   type: str
   returned: always
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
-from config import KUBEADM_MOD_CONFIG, KUBEADM_ARG_SPEC
-from template import KubeadmTemplate
+from ansible.module_utils.kubeadm_config import KUBEADM_MOD_CONFIG, KUBEADM_ARG_SPEC
+from ansible.module_utils.kubeadm_template import KubeadmTemplate
 
 
 class KubeadmModule(object):
+    def __init__(self):
+        self.result = {"changed": False}
+        self.module = AnsibleModule(
+            argument_spec=KUBEADM_ARG_SPEC,
+            supports_check_mode=KUBEADM_MOD_CONFIG.get("supports_check_mode", False),
+            required_together=KUBEADM_MOD_CONFIG.get("required_together", []),
+        )
 
-  def __init__(self, *args, **kwargs):
-    # super().__init__(*args, **kwargs)
-    self.result = {
-      "changed": False,
-    }
-    self.module = AnsibleModule(
-      argument_spec = KUBEADM_ARG_SPEC,
-      supports_check_mode = KUBEADM_MOD_CONFIG.get('supports_check_mode', False),
-      required_together = KUBEADM_MOD_CONFIG.get('required_together', []),
-    )
+    def _kubeadm_version(self):
+        _, stdout, _ = self.module.run_command(["kubeadm", "version"], check_rc=True)
+        self.result["kubeadm_version"] = stdout
+        self.result["changed"] = True
 
-  def __kubeadm_version(self):
-    _, stdout, _ = self.module.run_command(['kubeadm', 'version'], check_rc=True)
-    self.result['kubeadm_version'] = stdout
-    self.result['changed'] = True
+    def _kubeadm_init_template(self):
+        template = KubeadmTemplate("init")
+        self.kubeadm_init_config = template.written
 
-  def __kubeadm_init_template(self):
-    template = KubeadmTemplate('init')
-    self.kubeadm_init_config = template.written
+    def _kubeadm_init_run(self):
+        _, stdout, _ = self.module.run_command(
+            [
+                "kubeadm",
+                "--skip-headers",
+                "--v=2",
+                "init",
+                "--dry-run",
+                "--ignore-preflight-errors=none",
+                "--config",
+                self.kubeadm_init_config,
+            ],
+            check_rc=True,
+        )
+        self.result["kubeadm_init"] = stdout.replace("\t ", "").splitlines()
+        self.result["changed"] = True
 
-  def __kubeadm_init_run(self):
-    _, stdout, _ = self.module.run_command(
-      ['kubeadm', 'init', '--dry-run', '--config', self.kubeadm_init_config], check_rc=True
-    )
-    self.result['kubeadm_init'] = stdout
-    self.result['changed'] = True
+    def _destructure(self, dict_to_destructure, *args):
+        return [dict_to_destructure[key] for key in args]
 
-  def __destructure(self, dict_to_destructure, *args):
-    return [dict_to_destructure[key] for key in args]
+    def run(self):
+        # destructure all the input parameters
+        version, init, config = self._destructure(
+            self.module.params, "version", "init", "config"
+        )
 
-  def run(self):
-    # print(self.module.params)
-    # print(self.module.tmpdir)
+        if self.module.check_mode:
+            self.module.exit_json(**self.result)
 
-    # destructure all the input parameters
-    version, init, config = self.__destructure(self.module.params, 'version', 'init', 'config')
-    # print(config)
+        if version:
+            self._kubeadm_version()
 
-    if self.module.check_mode:
-      self.module.exit_json(**self.result)
+        if init or init == "yes":
+            self._kubeadm_init_template()
+            self._kubeadm_init_run()
 
-    if version:
-      self.__kubeadm_version()
-
-    if init or init == 'yes':
-      self.__kubeadm_init_template()
-      self.__kubeadm_init_run()
-
-    self.module.exit_json(**self.result)
+        self.module.exit_json(**self.result)
 
 
 def main():
-  KubeadmModule().run()
+    KubeadmModule().run()
 
-if __name__ == '__main__':
-  main()
+
+if __name__ == "__main__":
+    main()
