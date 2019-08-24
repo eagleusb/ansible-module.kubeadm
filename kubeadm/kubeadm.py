@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 ANSIBLE_METADATA = {
   'metadata_version': '0.1.0',
@@ -58,6 +58,7 @@ message:
 
 from ansible.module_utils.basic import AnsibleModule
 from config import KUBEADM_MOD_CONFIG, KUBEADM_ARG_SPEC
+from template import KubeadmTemplate
 
 
 class KubeadmModule(object):
@@ -73,20 +74,42 @@ class KubeadmModule(object):
       required_together = KUBEADM_MOD_CONFIG.get('required_together', []),
     )
 
-  def __version(self):
-    rc, stdout, stderr = self.module.run_command(['kubeadm', 'version'], check_rc=True)
+  def __kubeadm_version(self):
+    _, stdout, _ = self.module.run_command(['kubeadm', 'version'], check_rc=True)
     self.result['kubeadm_version'] = stdout
     self.result['changed'] = True
 
+  def __kubeadm_init_template(self):
+    template = KubeadmTemplate('init')
+    self.kubeadm_init_config = template.written
+
+  def __kubeadm_init_run(self):
+    _, stdout, _ = self.module.run_command(
+      ['kubeadm', 'init', '--dry-run', '--config', self.kubeadm_init_config], check_rc=True
+    )
+    self.result['kubeadm_init'] = stdout
+    self.result['changed'] = True
+
+  def __destructure(self, dict_to_destructure, *args):
+    return [dict_to_destructure[key] for key in args]
+
   def run(self):
-    print(self.module.params)
-    print(self.module.tmpdir)
+    # print(self.module.params)
+    # print(self.module.tmpdir)
+
+    # destructure all the input parameters
+    version, init, config = self.__destructure(self.module.params, 'version', 'init', 'config')
+    # print(config)
 
     if self.module.check_mode:
       self.module.exit_json(**self.result)
 
-    if self.module.params['version']:
-      self.__version()
+    if version:
+      self.__kubeadm_version()
+
+    if init or init == 'yes':
+      self.__kubeadm_init_template()
+      self.__kubeadm_init_run()
 
     self.module.exit_json(**self.result)
 
