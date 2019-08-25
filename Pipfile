@@ -18,3 +18,7 @@ python_version = "3"
 
 [pipenv]
 allow_prereleases = true
+
+[scripts]
+lint = "black --line-length 100 kubeadm/"
+test = "ansible-playbook test/play.yml --ask-become-pass"
