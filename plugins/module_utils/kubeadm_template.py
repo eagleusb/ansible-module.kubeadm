@@ -4,10 +4,7 @@ import tempfile
 from jinja2 import Environment, DictLoader
 from pathlib import Path
 
-from ansible.module_utils.kubeadm_config import (
-    KUBEADM_TEMPLATE_SPEC,
-    KUBEADM_TEMPLATE_VARS,
-)
+from ansible.module_utils.kubeadm_config import KUBEADM_TEMPLATE_SPEC, KUBEADM_TEMPLATE_VARS
 
 
 class KubeadmTemplate(object):
@@ -15,9 +12,7 @@ class KubeadmTemplate(object):
 
     def __init__(self, kind):
         self.__jinja = Environment(
-            loader=DictLoader(KUBEADM_TEMPLATE_SPEC),
-            trim_blocks=True,
-            lstrip_blocks=True,
+            loader=DictLoader(KUBEADM_TEMPLATE_SPEC), trim_blocks=True, lstrip_blocks=True
         )
         self.templatize(kind)
 
@@ -25,9 +20,7 @@ class KubeadmTemplate(object):
         self.__loaded = self.__jinja.get_template(template)
 
     def _render(self, kind):
-        self.__rendered = bytes(
-            self.__loaded.render(KUBEADM_TEMPLATE_VARS[kind]), encoding="utf-8"
-        )
+        self.__rendered = bytes(self.__loaded.render(KUBEADM_TEMPLATE_VARS[kind]), encoding="utf-8")
 
     def _write(self, kind):
         fd, tmpfile = tempfile.mkstemp(prefix=f"kubeadm_{kind}_")

@@ -1,0 +1,19 @@
+---
+namespace: "eagleusb"
+name: "kubeadm"
+version: "0.1.0"
+readme: "README.md"
+authors:
+  - "Leslie-Alexandre DENIS <git@eagleusb.com>"
+description: "Kubeadm module to bootstrap a Kubernetes cluster"
+license_file: "LICENSE"
+tags:
+  - "kubernetes"
+  - "kubeadm"
+  - "k8s"
+  - "orchestration"
+dependencies: {}
+repository: "https://github.com/eagleusb/ansible-module.consul"
+documentation: "https://github.com/eagleusb/ansible-module.consul/tree/main/docs"
+homepage: "https://github.com/eagleusb/ansible-module.consul"
+issues: "https://github.com/eagleusb/ansible-module.consul/issues"

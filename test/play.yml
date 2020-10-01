@@ -6,7 +6,6 @@
   become: True
   tasks:
     - kubeadm:
-        version: False
         init: "yes"
       register: kubeadm
     - debug:

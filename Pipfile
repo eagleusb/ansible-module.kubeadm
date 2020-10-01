@@ -4,7 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-ansible = ">=2.8"
 autopep8 = "*"
 bandit = "*"
 black = "*"
@@ -12,6 +11,8 @@ pylint = "*"
 
 [packages]
 jinja2 = ">=2.10.1"
+ansible = ">=2.9"
+yamllint = ">=1.24.2"
 
 [requires]
 python_version = "3"
@@ -20,5 +21,8 @@ python_version = "3"
 allow_prereleases = true
 
 [scripts]
+black-diff = "black --line-length 100 --diff kubeadm/"
+black-lint = "black --line-length 100 kubeadm/"
 lint = "black --line-length 100 kubeadm/"
+yamllint = "yamllint --strict --format colored ."
 test = "ansible-playbook test/play.yml --ask-become-pass"
